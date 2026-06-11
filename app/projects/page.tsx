@@ -20,6 +20,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -64,8 +65,6 @@ export default function ProjectsPage() {
   };
 
   const handleDeleteProject = async (id: number) => {
-    if (!confirm('¿Deseas eliminar este proyecto?')) return;
-
     try {
       const response = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
       if (response.ok) {
@@ -73,6 +72,8 @@ export default function ProjectsPage() {
       }
     } catch (error) {
       console.error('Error al eliminar proyecto:', error);
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 
@@ -173,7 +174,7 @@ export default function ProjectsPage() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        handleDeleteProject(project.id);
+                        setConfirmDeleteId(project.id);
                       }}
                       className="p-1.5 bg-slate-700 hover:bg-red-900/50 rounded-lg text-slate-400 hover:text-red-400 transition"
                       title="Eliminar"
@@ -194,6 +195,29 @@ export default function ProjectsPage() {
         onCreate={handleCreateProject}
         isCreating={creating}
       />
+
+      {confirmDeleteId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl p-6 w-80">
+            <p className="text-white font-medium mb-2">¿Eliminar proyecto?</p>
+            <p className="text-slate-400 text-sm mb-6">Esta acción no se puede deshacer.</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="px-4 py-2 text-slate-300 hover:text-white transition text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDeleteProject(confirmDeleteId)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
