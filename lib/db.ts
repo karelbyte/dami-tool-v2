@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { mkdirSync } from 'fs';
+import { randomBytes } from 'crypto';
 
 const dbPath = path.join(process.cwd(), 'data', 'app.db');
 
@@ -14,6 +15,12 @@ export function getDb() {
     initializeDatabase(db);
   }
   return db;
+}
+
+export function generatePublicSlug(name: string): string {
+  const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').substring(0, 40);
+  const hash = randomBytes(4).toString('hex');
+  return `${slug}-${hash}`;
 }
 
 function initializeDatabase(database: Database.Database) {
@@ -30,6 +37,7 @@ function initializeDatabase(database: Database.Database) {
       user_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       content TEXT,
+      public_slug TEXT UNIQUE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

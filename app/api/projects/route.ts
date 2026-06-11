@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, generatePublicSlug } from '@/lib/db';
 import { cookies } from 'next/headers';
 
 export async function GET() {
@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     const db = getDb();
-    const projects = db.prepare('SELECT id, name, created_at, updated_at FROM projects WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+    const projects = db.prepare('SELECT id, name, public_slug, created_at, updated_at FROM projects WHERE user_id = ? ORDER BY created_at DESC').all(userId);
 
     return NextResponse.json(projects);
   } catch (error) {
@@ -36,9 +36,10 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getDb();
-    const result = db.prepare('INSERT INTO projects (user_id, name, content) VALUES (?, ?, ?)').run(userId, name, '');
+    const slug = generatePublicSlug(name);
+    const result = db.prepare('INSERT INTO projects (user_id, name, content, public_slug) VALUES (?, ?, ?, ?)').run(userId, name, '', slug);
 
-    return NextResponse.json({ id: result.lastInsertRowid, name, created_at: new Date().toISOString() });
+    return NextResponse.json({ id: result.lastInsertRowid, name, public_slug: slug, created_at: new Date().toISOString() });
   } catch (error) {
     return NextResponse.json({ error: 'Error al crear proyecto' }, { status: 500 });
   }

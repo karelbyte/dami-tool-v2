@@ -11,6 +11,7 @@ interface TextEditorProps {
   onBack?: () => void;
   projectId?: string;
   onTranslationSaved?: () => void;
+  publicSlug?: string;
 }
 
 export interface TextEditorHandle {
@@ -64,7 +65,7 @@ function findTextNodesInEditor(editor: HTMLDivElement, searchText: string): { no
 }
 
 const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(function TextEditor(
-  { initialContent = '', onSave, projectName, onBack, projectId, onTranslationSaved },
+  { initialContent = '', onSave, projectName, onBack, projectId, onTranslationSaved, publicSlug },
   ref
 ) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -354,6 +355,7 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(function TextEd
             <option value="20">20px</option>
             <option value="24">24px</option>
             <option value="28">28px</option>
+            <option value="36">36px</option>
           </select>
           <div className="relative inline-block">
             <button
@@ -385,6 +387,18 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(function TextEd
           )}
         </div>
         <div className="flex items-center gap-4">
+          {publicSlug && (
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/p/${publicSlug}`;
+                navigator.clipboard.writeText(url);
+              }}
+              className="px-3 py-1 bg-slate-700 border border-slate-600 text-white rounded hover:bg-slate-600 transition text-sm"
+              title="Copiar enlace público"
+            >
+              🔗 Compartir
+            </button>
+          )}
           {onBack && (
             <button onClick={onBack} className="px-3 py-1 bg-slate-700 border border-slate-600 text-white rounded hover:bg-slate-600 transition text-sm">← Volver</button>
           )}

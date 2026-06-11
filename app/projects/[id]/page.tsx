@@ -10,6 +10,7 @@ interface Project {
   id: number;
   name: string;
   content: string;
+  public_slug: string;
 }
 
 export default function ProjectEditorPage() {
@@ -102,7 +103,7 @@ export default function ProjectEditorPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950">
-      <Sidebar projectId={projectId} refreshKey={translationRefresh} editorRef={editorHandle} />
+      <Sidebar projectId={projectId} refreshKey={translationRefresh} editorRef={editorHandle} publicSlug={project.public_slug} />
       <div className="flex-1 overflow-hidden">
         <TextEditor
           ref={editorHandle}
@@ -111,6 +112,7 @@ export default function ProjectEditorPage() {
           projectName={project.name}
           onBack={() => router.push('/projects')}
           projectId={projectId}
+          publicSlug={project.public_slug}
           onTranslationSaved={() => setTranslationRefresh((k) => k + 1)}
         />
       </div>

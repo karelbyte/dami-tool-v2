@@ -17,9 +17,10 @@ interface SidebarProps {
   projectId?: string;
   refreshKey?: number;
   editorRef?: React.RefObject<import('./TextEditor').TextEditorHandle | null>;
+  publicSlug?: string;
 }
 
-export default function Sidebar({ projectId, refreshKey, editorRef }: SidebarProps) {
+export default function Sidebar({ projectId, refreshKey, editorRef, publicSlug }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [translations, setTranslations] = useState<Translation[]>([]);
@@ -37,6 +38,16 @@ export default function Sidebar({ projectId, refreshKey, editorRef }: SidebarPro
   const handleDelete = async (tid: number) => {
     await fetch(`/api/projects/${projectId}/translations/${tid}`, { method: 'DELETE' });
     setTranslations((prev) => prev.filter((t) => t.id !== tid));
+  };
+
+  const emitLive = (data: object) => {
+    if (!publicSlug) return;
+    fetch(`/api/live/${publicSlug}/emit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
   };
 
   return (
@@ -63,16 +74,26 @@ export default function Sidebar({ projectId, refreshKey, editorRef }: SidebarPro
             <div
               key={t.id}
               className={`bg-slate-800 border rounded-lg p-3 flex flex-col gap-2 group cursor-pointer transition ${activeTranslationId === t.id ? 'border-blue-500' : 'border-slate-700 hover:border-slate-500'}`}
-              onMouseEnter={() => editorRef?.current?.highlightText(t.original_text)}
-              onMouseLeave={() => editorRef?.current?.clearHighlight()}
+              onMouseEnter={() => {
+                editorRef?.current?.highlightText(activeTranslationId === t.id ? t.translation : t.original_text);
+                emitLive({ type: 'highlight', translationId: t.id, text: activeTranslationId === t.id ? t.translation : t.original_text });
+              }}
+              onMouseLeave={() => {
+                editorRef?.current?.clearHighlight();
+                emitLive({ type: 'clearHighlight' });
+              }}
               onClick={() => {
                 if (activeTranslationId === t.id) {
                   editorRef?.current?.replaceText(t.translation, t.original_text);
                   setActiveTranslationId(null);
+                  setTimeout(() => editorRef?.current?.highlightText(t.original_text), 50);
+                  emitLive({ type: 'revert', translationId: t.id, original: t.original_text, translation: t.translation });
                 } else {
                   editorRef?.current?.clearHighlight();
                   editorRef?.current?.replaceText(t.original_text, t.translation);
                   setActiveTranslationId(t.id);
+                  setTimeout(() => editorRef?.current?.highlightText(t.translation), 50);
+                  emitLive({ type: 'translate', translationId: t.id, original: t.original_text, translation: t.translation });
                 }
               }}
             >

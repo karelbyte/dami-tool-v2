@@ -10,6 +10,7 @@ import CreateProjectModal from '@/components/CreateProjectModal';
 interface Project {
   id: number;
   name: string;
+  public_slug: string;
   created_at: string;
   updated_at: string;
 }
@@ -151,10 +152,10 @@ export default function ProjectsPage() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        navigator.clipboard.writeText(project.name);
+                        navigator.clipboard.writeText(`${window.location.origin}/p/${project.public_slug}`);
                       }}
                       className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-blue-400 transition"
-                      title="Copiar"
+                      title="Copiar enlace público"
                     >
                       <FiCopy size={16} />
                     </button>
