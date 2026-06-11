@@ -180,6 +180,11 @@ export default function PublicProjectPage() {
           if (currentHoverId !== t.id) {
             currentHoverId = t.id;
             highlightText(container, searchText);
+            fetch(`/api/live/${slug}/public-emit`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: 'highlight', text: searchText }),
+            });
           }
           container.style.cursor = 'pointer';
           return;
@@ -190,6 +195,11 @@ export default function PublicProjectPage() {
         currentHoverId = null;
         clearMarks(container, 'data-hl');
         container.style.cursor = 'default';
+        fetch(`/api/live/${slug}/public-emit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'clearHighlight' }),
+        });
       }
     };
 
@@ -214,6 +224,11 @@ export default function PublicProjectPage() {
         }
         localActiveIdRef.current = null;
         setTimeout(() => highlightText(container, t.original_text), 50);
+        fetch(`/api/live/${slug}/public-emit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'revert', translationId: t.id, original: t.original_text, translation: t.translation }),
+        });
       } else {
         localSavedHtml.current = container.innerHTML;
         const textNodes = getTextNodes(container);
@@ -254,6 +269,11 @@ export default function PublicProjectPage() {
         container.normalize();
         localActiveIdRef.current = tid;
         setTimeout(() => highlightText(container, t.translation), 50);
+        fetch(`/api/live/${slug}/public-emit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'translate', translationId: t.id, original: t.original_text, translation: t.translation }),
+        });
       }
     };
 

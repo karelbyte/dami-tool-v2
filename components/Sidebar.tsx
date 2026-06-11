@@ -19,9 +19,10 @@ interface SidebarProps {
   refreshKey?: number;
   editorRef?: React.RefObject<import('./TextEditor').TextEditorHandle | null>;
   publicSlug?: string;
+  remoteActiveId?: number | null;
 }
 
-export default function Sidebar({ projectId, refreshKey, editorRef, publicSlug }: SidebarProps) {
+export default function Sidebar({ projectId, refreshKey, editorRef, publicSlug, remoteActiveId }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [translations, setTranslations] = useState<Translation[]>([]);
@@ -41,6 +42,12 @@ export default function Sidebar({ projectId, refreshKey, editorRef, publicSlug }
     await fetch(`/api/projects/${projectId}/translations/${tid}`, { method: 'DELETE' });
     setTranslations((prev) => prev.filter((t) => t.id !== tid));
   };
+
+  useEffect(() => {
+    if (remoteActiveId !== undefined) {
+      setActiveTranslationId(remoteActiveId ?? null);
+    }
+  }, [remoteActiveId]);
 
   const emitLive = (data: object) => {
     if (!publicSlug) return;

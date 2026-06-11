@@ -3,7 +3,7 @@ import path from 'path';
 import { mkdirSync } from 'fs';
 import { randomBytes } from 'crypto';
 
-const dbPath = path.join(process.cwd(), 'data', 'app.db');
+const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'data', 'app.db');
 
 let db: Database.Database;
 

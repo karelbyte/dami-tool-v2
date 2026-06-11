@@ -19,6 +19,7 @@ export default function ProjectEditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [translationRefresh, setTranslationRefresh] = useState(0);
+  const [remoteActiveId, setRemoteActiveId] = useState<number | null>(null);
   const editorHandle = useRef<TextEditorHandle>(null);
   const router = useRouter();
   const params = useParams();
@@ -35,6 +36,28 @@ export default function ProjectEditorPage() {
       document.title = project.name;
     }
   }, [project]);
+
+  useEffect(() => {
+    if (!project?.public_slug) return;
+    const es = new EventSource(`/api/live/${project.public_slug}`);
+    es.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.type === 'highlight') {
+        editorHandle.current?.highlightText(data.text);
+      } else if (data.type === 'clearHighlight') {
+        editorHandle.current?.clearHighlight();
+      } else if (data.type === 'translate') {
+        editorHandle.current?.replaceText(data.original, data.translation);
+        setRemoteActiveId(data.translationId);
+        setTimeout(() => editorHandle.current?.highlightText(data.translation), 50);
+      } else if (data.type === 'revert') {
+        editorHandle.current?.replaceText(data.translation, data.original);
+        setRemoteActiveId(null);
+        setTimeout(() => editorHandle.current?.highlightText(data.original), 50);
+      }
+    };
+    return () => es.close();
+  }, [project?.public_slug]);
 
   const fetchProject = async () => {
     try {
@@ -103,7 +126,7 @@ export default function ProjectEditorPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950">
-      <Sidebar projectId={projectId} refreshKey={translationRefresh} editorRef={editorHandle} publicSlug={project.public_slug} />
+      <Sidebar projectId={projectId} refreshKey={translationRefresh} editorRef={editorHandle} publicSlug={project.public_slug} remoteActiveId={remoteActiveId} />
       <div className="flex-1 overflow-hidden">
         <TextEditor
           ref={editorHandle}
