@@ -1,5 +1,7 @@
-1. app en nextjs con db en sqlite
-2 . login de incioo que que tiene user "dami" pass "1987"
-3. vista principa dondo demos crear proyecto cuando se crea un proyecto se guarda nombre, fecha y se crea un card donde se muestra el nombre, fecha y tenga bton editar, eliminar 
-4. cuando se le da click a la card te manda al proyecto, este es una vista donde tendremos un editor de texto hecho a la medida que nos permita pgar texto y a este poder ponerle colores, y tamaño de letra, asi como insetar imagenes entre los parrafos
-5. en cualquier momento podemos guardar lo que tenemos en el editor a la db
+1. ✅ App en Next.js con SQLite - Implementado y funcional
+2. ✅ Login con user "dami" y pass "1987" - Autenticación con cookies httpOnly funcionando
+3. ✅ Vista de proyectos - Grid de cards con nombre, fecha, botones copiar/editar/eliminar. Modal para crear proyectos
+4. ✅ Editor de texto personalizado - Negrita, cursiva, subrayado, alineación (izq/centro/der), tamaño de fuente dinámico, color de texto, inserción de imágenes en base64 con redimensionamiento, undo/redo
+5. ✅ Auto-guardado cada 60 segundos - Indicador visual de cambios no guardados (punto naranja) y estado de guardado (punto azul pulsante)
+
+TAREAS INICIALES COMPLETADAS - PROYECTO ABIERTO PARA MÁS FUNCIONALIDADES

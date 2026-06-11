@@ -34,6 +34,16 @@ function initializeDatabase(database: Database.Database) {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS translations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL,
+      original_text TEXT NOT NULL,
+      translation TEXT NOT NULL,
+      question TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    );
   `);
 
   const userCount = database.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };

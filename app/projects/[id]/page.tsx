@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import TextEditor from '@/components/TextEditor';
+import Head from 'next/head';
+import TextEditor, { TextEditorHandle } from '@/components/TextEditor';
 import Sidebar from '@/components/Sidebar';
 
 interface Project {
@@ -16,6 +17,8 @@ export default function ProjectEditorPage() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [translationRefresh, setTranslationRefresh] = useState(0);
+  const editorHandle = useRef<TextEditorHandle>(null);
   const router = useRouter();
   const params = useParams();
   const projectId = params.id as string;
@@ -25,6 +28,12 @@ export default function ProjectEditorPage() {
       fetchProject();
     }
   }, [projectId]);
+
+  useEffect(() => {
+    if (project) {
+      document.title = project.name;
+    }
+  }, [project]);
 
   const fetchProject = async () => {
     try {
@@ -71,7 +80,7 @@ export default function ProjectEditorPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-slate-950">
+      <div className="flex h-screen overflow-hidden bg-slate-950">
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <p className="text-slate-400">Cargando proyecto...</p>
@@ -82,7 +91,7 @@ export default function ProjectEditorPage() {
 
   if (!project) {
     return (
-      <div className="flex min-h-screen bg-slate-950">
+      <div className="flex h-screen overflow-hidden bg-slate-950">
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <p className="text-slate-400">Proyecto no encontrado</p>
@@ -92,29 +101,18 @@ export default function ProjectEditorPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="bg-slate-900 border-b border-slate-800 p-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-xl font-bold text-white">{project.name}</h1>
-            <div className="flex items-center gap-4">
-              {message && <p className="text-green-400 text-sm">{message}</p>}
-              <button
-                onClick={() => router.push('/projects')}
-                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition font-medium"
-              >
-                ← Volver
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 p-4">
-          <div className="bg-slate-900 rounded-lg overflow-hidden border border-slate-800 h-full flex flex-col">
-            <TextEditor initialContent={project.content} onSave={handleSave} />
-          </div>
-        </div>
+    <div className="flex h-screen overflow-hidden bg-slate-950">
+      <Sidebar projectId={projectId} refreshKey={translationRefresh} editorRef={editorHandle} />
+      <div className="flex-1 overflow-hidden">
+        <TextEditor
+          ref={editorHandle}
+          initialContent={project.content}
+          onSave={handleSave}
+          projectName={project.name}
+          onBack={() => router.push('/projects')}
+          projectId={projectId}
+          onTranslationSaved={() => setTranslationRefresh((k) => k + 1)}
+        />
       </div>
     </div>
   );

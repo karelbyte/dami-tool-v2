@@ -83,8 +83,9 @@ export default function ProjectsPage() {
     });
   };
 
-  const handleLogout = () => {
-    router.push('/login');
+  const handleLogout = async () => {
+    await fetch('/api/auth', { method: 'DELETE', credentials: 'include' });
+    window.location.href = '/login';
   };
 
   return (

@@ -24,3 +24,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Error al autenticar' }, { status: 500 });
   }
 }
+
+export async function DELETE() {
+  const response = NextResponse.json({ success: true });
+  response.cookies.set('userId', '', { httpOnly: true, maxAge: 0 });
+  response.cookies.delete('userId');
+  return response;
+}
