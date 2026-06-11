@@ -10,120 +10,84 @@ interface Translation {
   question: string | null;
 }
 
-function findAndHighlight(container: HTMLElement, searchText: string) {
-  clearHighlight(container);
+function getTextNodes(container: HTMLElement): Text[] {
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
-  const textNodes: Text[] = [];
-  let node: Node | null;
-  while ((node = walker.nextNode())) textNodes.push(node as Text);
+  const nodes: Text[] = [];
+  let n: Node | null;
+  while ((n = walker.nextNode())) nodes.push(n as Text);
+  return nodes;
+}
 
-  const normalizedSearch = searchText.trim().replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ');
-  const searchRegex = new RegExp(normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s*'), '');
+function buildRegex(text: string) {
+  const normalized = text.trim().replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ');
+  return new RegExp(normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s*'), '');
+}
+
+function clearMarks(container: HTMLElement, attr: string) {
+  container.querySelectorAll(`[${attr}]`).forEach((el) => {
+    const parent = el.parentNode;
+    if (parent) {
+      while (el.firstChild) parent.insertBefore(el.firstChild, el);
+      parent.removeChild(el);
+    }
+  });
+  container.normalize();
+}
+
+function highlightText(container: HTMLElement, searchText: string) {
+  clearMarks(container, 'data-hl');
+  const textNodes = getTextNodes(container);
+  const regex = buildRegex(searchText);
   const fullRaw = textNodes.map((n) => n.textContent || '').join('');
-  const match = searchRegex.exec(fullRaw);
+  const match = regex.exec(fullRaw);
   if (!match) return;
 
-  const idx = match.index;
   let offset = 0;
   let remaining = match[0].length;
   let started = false;
 
   for (const tn of textNodes) {
     const len = (tn.textContent || '').length;
-    if (!started && offset + len > idx) {
+    if (!started && offset + len > match.index) {
       started = true;
-      const start = idx - offset;
+      const start = match.index - offset;
       const take = Math.min(len - start, remaining);
-      const range = document.createRange();
-      range.setStart(tn, start);
-      range.setEnd(tn, start + take);
-      const mark = document.createElement('mark');
-      mark.dataset.liveHighlight = 'true';
-      mark.style.backgroundColor = '#facc15';
-      mark.style.color = '#000';
-      mark.style.borderRadius = '2px';
-      range.surroundContents(mark);
-      remaining -= take;
+      try {
+        const range = document.createRange();
+        range.setStart(tn, start);
+        range.setEnd(tn, start + take);
+        const mark = document.createElement('mark');
+        mark.setAttribute('data-hl', 'true');
+        mark.style.backgroundColor = '#facc15';
+        mark.style.color = '#000';
+        mark.style.borderRadius = '2px';
+        range.surroundContents(mark);
+        remaining -= take;
+      } catch {}
     } else if (started && remaining > 0) {
       const take = Math.min(len, remaining);
-      const range = document.createRange();
-      range.setStart(tn, 0);
-      range.setEnd(tn, take);
-      const mark = document.createElement('mark');
-      mark.dataset.liveHighlight = 'true';
-      mark.style.backgroundColor = '#facc15';
-      mark.style.color = '#000';
-      mark.style.borderRadius = '2px';
-      range.surroundContents(mark);
-      remaining -= take;
+      try {
+        const range = document.createRange();
+        range.setStart(tn, 0);
+        range.setEnd(tn, take);
+        const mark = document.createElement('mark');
+        mark.setAttribute('data-hl', 'true');
+        mark.style.backgroundColor = '#facc15';
+        mark.style.color = '#000';
+        mark.style.borderRadius = '2px';
+        range.surroundContents(mark);
+        remaining -= take;
+      } catch {}
     }
     offset += len;
     if (remaining <= 0) break;
   }
 }
 
-function clearHighlight(container: HTMLElement) {
-  container.querySelectorAll('mark[data-live-highlight]').forEach((mark) => {
-    const parent = mark.parentNode;
-    if (parent) {
-      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
-      parent.removeChild(mark);
-    }
-  });
-  container.normalize();
-}
-
-function replaceText(container: HTMLElement, original: string, replacement: string, savedHtml: React.MutableRefObject<string | null>) {
-  clearHighlight(container);
-  if (savedHtml.current === null) {
-    savedHtml.current = container.innerHTML;
-    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
-    const textNodes: Text[] = [];
-    let node: Node | null;
-    while ((node = walker.nextNode())) textNodes.push(node as Text);
-
-    const normalizedSearch = original.trim().replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ');
-    const searchRegex = new RegExp(normalizedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s*'), '');
-    const fullRaw = textNodes.map((n) => n.textContent || '').join('');
-    const match = searchRegex.exec(fullRaw);
-    if (!match) { savedHtml.current = null; return; }
-
-    const idx = match.index;
-    let offset = 0;
-    let remaining = match[0].length;
-    let started = false;
-    const collected: { node: Text; start: number; take: number }[] = [];
-
-    for (const tn of textNodes) {
-      const len = (tn.textContent || '').length;
-      if (!started && offset + len > idx) {
-        started = true;
-        const start = idx - offset;
-        const take = Math.min(len - start, remaining);
-        collected.push({ node: tn, start, take });
-        remaining -= take;
-      } else if (started && remaining > 0) {
-        const take = Math.min(len, remaining);
-        collected.push({ node: tn, start: 0, take });
-        remaining -= take;
-      }
-      offset += len;
-      if (remaining <= 0) break;
-    }
-
-    for (let i = collected.length - 1; i >= 0; i--) {
-      const { node, start, take } = collected[i];
-      const range = document.createRange();
-      range.setStart(node, start);
-      range.setEnd(node, start + take);
-      range.deleteContents();
-      if (i === 0) range.insertNode(document.createTextNode(replacement));
-    }
-    container.normalize();
-  } else {
-    container.innerHTML = savedHtml.current;
-    savedHtml.current = null;
-  }
+function textExistsInContainer(container: HTMLElement, searchText: string): boolean {
+  const textNodes = getTextNodes(container);
+  const fullRaw = textNodes.map((n) => n.textContent || '').join('');
+  return buildRegex(searchText).test(fullRaw);
 }
 
 export default function PublicProjectPage() {
@@ -133,9 +97,14 @@ export default function PublicProjectPage() {
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [activeId, setActiveId] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const savedHtml = useRef<string | null>(null);
+  const translationsRef = useRef<Translation[]>([]);
+  const localActiveIdRef = useRef<number | null>(null);
+  const localSavedHtml = useRef<string | null>(null);
+  const sseActiveIdRef = useRef<number | null>(null);
+  const sseSavedHtml = useRef<string | null>(null);
+
+  useEffect(() => { translationsRef.current = translations; }, [translations]);
 
   useEffect(() => {
     fetch(`/api/public/${slug}`)
@@ -151,22 +120,206 @@ export default function PublicProjectPage() {
   }, [project]);
 
   useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+
+    let currentHoverId: number | null = null;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!translationsRef.current.length) return;
+      const x = e.clientX, y = e.clientY;
+      const el = document.elementFromPoint(x, y);
+      if (!el || !container.contains(el)) return;
+
+      for (const t of translationsRef.current) {
+        const searchText = localActiveIdRef.current === t.id ? t.translation : t.original_text;
+        const textNodes = getTextNodes(container);
+        const fullRaw = textNodes.map((n) => n.textContent || '').join('');
+        const match = buildRegex(searchText).exec(fullRaw);
+        if (!match) continue;
+
+        let offset = 0;
+        let started = false;
+        let remaining = match[0].length;
+        let found = false;
+
+        for (const tn of textNodes) {
+          const len = (tn.textContent || '').length;
+          if (!started && offset + len > match.index) {
+            started = true;
+            const start = match.index - offset;
+            const take = Math.min(len - start, remaining);
+            try {
+              const range = document.createRange();
+              range.setStart(tn, start);
+              range.setEnd(tn, start + take);
+              const rect = range.getBoundingClientRect();
+              if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                found = true; break;
+              }
+            } catch {}
+            remaining -= take;
+          } else if (started && remaining > 0) {
+            const take = Math.min(len, remaining);
+            try {
+              const range = document.createRange();
+              range.setStart(tn, 0);
+              range.setEnd(tn, take);
+              const rect = range.getBoundingClientRect();
+              if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                found = true; break;
+              }
+            } catch {}
+            remaining -= take;
+          }
+          offset += len;
+          if (remaining <= 0) break;
+        }
+
+        if (found) {
+          if (currentHoverId !== t.id) {
+            currentHoverId = t.id;
+            highlightText(container, searchText);
+          }
+          container.style.cursor = 'pointer';
+          return;
+        }
+      }
+
+      if (currentHoverId !== null) {
+        currentHoverId = null;
+        clearMarks(container, 'data-hl');
+        container.style.cursor = 'default';
+      }
+    };
+
+    const onMouseLeave = () => {
+      currentHoverId = null;
+      clearMarks(container, 'data-hl');
+      container.style.cursor = 'default';
+    };
+
+    const onClick = (e: MouseEvent) => {
+      if (currentHoverId === null) return;
+      const tid = currentHoverId;
+      const t = translationsRef.current.find((x) => x.id === tid);
+      if (!t) return;
+
+      clearMarks(container, 'data-hl');
+
+      if (localActiveIdRef.current === tid) {
+        if (localSavedHtml.current !== null) {
+          container.innerHTML = localSavedHtml.current;
+          localSavedHtml.current = null;
+        }
+        localActiveIdRef.current = null;
+        setTimeout(() => highlightText(container, t.original_text), 50);
+      } else {
+        localSavedHtml.current = container.innerHTML;
+        const textNodes = getTextNodes(container);
+        const fullRaw = textNodes.map((n) => n.textContent || '').join('');
+        const match = buildRegex(t.original_text).exec(fullRaw);
+        if (!match) return;
+
+        let offset = 0;
+        let remaining = match[0].length;
+        let started = false;
+        const collected: { node: Text; start: number; take: number }[] = [];
+
+        for (const tn of textNodes) {
+          const len = (tn.textContent || '').length;
+          if (!started && offset + len > match.index) {
+            started = true;
+            const start = match.index - offset;
+            const take = Math.min(len - start, remaining);
+            collected.push({ node: tn, start, take });
+            remaining -= take;
+          } else if (started && remaining > 0) {
+            const take = Math.min(len, remaining);
+            collected.push({ node: tn, start: 0, take });
+            remaining -= take;
+          }
+          offset += len;
+          if (remaining <= 0) break;
+        }
+
+        for (let i = collected.length - 1; i >= 0; i--) {
+          const { node, start, take } = collected[i];
+          const range = document.createRange();
+          range.setStart(node, start);
+          range.setEnd(node, start + take);
+          range.deleteContents();
+          if (i === 0) range.insertNode(document.createTextNode(t.translation));
+        }
+        container.normalize();
+        localActiveIdRef.current = tid;
+        setTimeout(() => highlightText(container, t.translation), 50);
+      }
+    };
+
+    container.addEventListener('mousemove', onMouseMove);
+    container.addEventListener('mouseleave', onMouseLeave);
+    container.addEventListener('click', onClick);
+    return () => {
+      container.removeEventListener('mousemove', onMouseMove);
+      container.removeEventListener('mouseleave', onMouseLeave);
+      container.removeEventListener('click', onClick);
+    };
+  }, [translations]);
+
+  useEffect(() => {
     const es = new EventSource(`/api/live/${slug}`);
     es.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      if (!contentRef.current) return;
+      const container = contentRef.current;
+      if (!container) return;
+
       if (data.type === 'highlight') {
-        findAndHighlight(contentRef.current, data.text);
+        highlightText(container, data.text);
       } else if (data.type === 'clearHighlight') {
-        clearHighlight(contentRef.current);
+        clearMarks(container, 'data-hl');
       } else if (data.type === 'translate') {
-        replaceText(contentRef.current, data.original, data.translation, savedHtml);
-        setActiveId(data.translationId);
-        setTimeout(() => { if (contentRef.current) findAndHighlight(contentRef.current, data.translation); }, 50);
+        sseSavedHtml.current = container.innerHTML;
+        const textNodes = getTextNodes(container);
+        const fullRaw = textNodes.map((n) => n.textContent || '').join('');
+        const match = buildRegex(data.original).exec(fullRaw);
+        if (!match) return;
+        let offset = 0, remaining = match[0].length, started = false;
+        const collected: { node: Text; start: number; take: number }[] = [];
+        for (const tn of textNodes) {
+          const len = (tn.textContent || '').length;
+          if (!started && offset + len > match.index) {
+            started = true;
+            const start = match.index - offset;
+            const take = Math.min(len - start, remaining);
+            collected.push({ node: tn, start, take });
+            remaining -= take;
+          } else if (started && remaining > 0) {
+            const take = Math.min(len, remaining);
+            collected.push({ node: tn, start: 0, take });
+            remaining -= take;
+          }
+          offset += len;
+          if (remaining <= 0) break;
+        }
+        for (let i = collected.length - 1; i >= 0; i--) {
+          const { node, start, take } = collected[i];
+          const range = document.createRange();
+          range.setStart(node, start);
+          range.setEnd(node, start + take);
+          range.deleteContents();
+          if (i === 0) range.insertNode(document.createTextNode(data.translation));
+        }
+        container.normalize();
+        sseActiveIdRef.current = data.translationId;
+        setTimeout(() => highlightText(container, data.translation), 50);
       } else if (data.type === 'revert') {
-        replaceText(contentRef.current, data.translation, data.original, savedHtml);
-        setActiveId(null);
-        setTimeout(() => { if (contentRef.current) findAndHighlight(contentRef.current, data.original); }, 50);
+        if (sseSavedHtml.current !== null) {
+          container.innerHTML = sseSavedHtml.current;
+          sseSavedHtml.current = null;
+        }
+        sseActiveIdRef.current = null;
+        setTimeout(() => highlightText(container, data.original), 50);
       }
     };
     return () => es.close();
@@ -185,40 +338,11 @@ export default function PublicProjectPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 flex">
-      <div className="flex-1 max-w-4xl mx-auto px-6 py-10">
+    <div className="min-h-screen bg-slate-950">
+      <div className="max-w-4xl mx-auto px-6 py-10">
         <h1 className="text-2xl font-bold text-white mb-8 pb-4 border-b border-slate-800">{project?.name}</h1>
-        <div
-          ref={contentRef}
-          className="text-white text-base leading-relaxed"
-        />
+        <div ref={contentRef} className="text-white text-base leading-relaxed cursor-default" />
       </div>
-
-      {translations.length > 0 && (
-        <div className="w-72 bg-slate-900 border-l border-slate-800 flex flex-col flex-shrink-0 p-3 gap-2 overflow-y-auto">
-          <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Traducciones</span>
-          {translations.map((t) => (
-            <div
-              key={t.id}
-              className={`bg-slate-800 border rounded-lg p-3 flex flex-col gap-2 cursor-pointer transition ${activeId === t.id ? 'border-blue-500' : 'border-slate-700 hover:border-slate-500'}`}
-              onMouseEnter={() => { if (contentRef.current) findAndHighlight(contentRef.current, activeId === t.id ? t.translation : t.original_text); }}
-              onMouseLeave={() => { if (contentRef.current) clearHighlight(contentRef.current); }}
-            >
-              <p className="text-slate-400 text-xs italic border-l-2 border-slate-600 pl-2">{t.original_text}</p>
-              <div>
-                <span className="text-slate-500 text-xs uppercase tracking-wider">Traducción</span>
-                <p className="text-white text-xs mt-0.5">{t.translation}</p>
-              </div>
-              {t.question && (
-                <div>
-                  <span className="text-slate-500 text-xs uppercase tracking-wider">Pregunta</span>
-                  <p className="text-blue-400 text-xs mt-0.5">{t.question}</p>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

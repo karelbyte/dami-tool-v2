@@ -3,7 +3,8 @@
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { FiTrash2 } from 'react-icons/fi';
+import { FiTrash2, FiEdit2 } from 'react-icons/fi';
+import EditTranslationModal from './EditTranslationModal';
 
 interface Translation {
   id: number;
@@ -26,6 +27,7 @@ export default function Sidebar({ projectId, refreshKey, editorRef, publicSlug }
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [activeTranslationId, setActiveTranslationId] = useState<number | null>(null);
+  const [editingTranslation, setEditingTranslation] = useState<Translation | null>(null);
 
   useEffect(() => {
     if (projectId) {
@@ -108,9 +110,16 @@ export default function Sidebar({ projectId, refreshKey, editorRef, publicSlug }
                   <p className="text-blue-400 text-xs mt-0.5">{t.question}</p>
                 </div>
               )}
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-1">
                 <button
-                  onClick={() => setConfirmDeleteId(t.id)}
+                  onClick={(e) => { e.stopPropagation(); setEditingTranslation(t); }}
+                  className="p-1.5 text-slate-500 hover:text-blue-400 hover:bg-slate-700 rounded transition opacity-0 group-hover:opacity-100"
+                  title="Editar"
+                >
+                  <FiEdit2 size={14} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(t.id); }}
                   className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-700 rounded transition opacity-0 group-hover:opacity-100"
                   title="Eliminar"
                 >
@@ -137,6 +146,22 @@ export default function Sidebar({ projectId, refreshKey, editorRef, publicSlug }
       <div className="p-4 border-t border-slate-800 text-slate-500 text-xs text-center">
         Dami Tool
       </div>
+
+      {editingTranslation && projectId && (
+        <EditTranslationModal
+          translationId={editingTranslation.id}
+          projectId={projectId}
+          originalText={editingTranslation.original_text}
+          initialTranslation={editingTranslation.translation}
+          initialQuestion={editingTranslation.question}
+          onClose={() => setEditingTranslation(null)}
+          onSaved={(updated) => {
+            setTranslations((prev) => prev.map((t) =>
+              t.id === editingTranslation.id ? { ...t, ...updated } : t
+            ));
+          }}
+        />
+      )}
 
       {confirmDeleteId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
