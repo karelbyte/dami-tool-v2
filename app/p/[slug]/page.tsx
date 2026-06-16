@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 interface Translation {
@@ -93,6 +93,7 @@ function textExistsInContainer(container: HTMLElement, searchText: string): bool
 export default function PublicProjectPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const clientId = useId();
   const [project, setProject] = useState<{ name: string; content: string } | null>(null);
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -183,7 +184,7 @@ export default function PublicProjectPage() {
             fetch(`/api/live/${slug}/public-emit`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type: 'highlight', text: searchText }),
+              body: JSON.stringify({ type: 'highlight', text: searchText, source: clientId }),
             });
           }
           container.style.cursor = 'pointer';
@@ -198,7 +199,7 @@ export default function PublicProjectPage() {
         fetch(`/api/live/${slug}/public-emit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'clearHighlight' }),
+          body: JSON.stringify({ type: 'clearHighlight', source: clientId }),
         });
       }
     };
@@ -227,7 +228,7 @@ export default function PublicProjectPage() {
         fetch(`/api/live/${slug}/public-emit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'revert', translationId: t.id, original: t.original_text, translation: t.translation }),
+          body: JSON.stringify({ type: 'revert', translationId: t.id, original: t.original_text, translation: t.translation, source: clientId }),
         });
       } else {
         localSavedHtml.current = container.innerHTML;
@@ -272,7 +273,7 @@ export default function PublicProjectPage() {
         fetch(`/api/live/${slug}/public-emit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'translate', translationId: t.id, original: t.original_text, translation: t.translation }),
+          body: JSON.stringify({ type: 'translate', translationId: t.id, original: t.original_text, translation: t.translation, source: clientId }),
         });
       }
     };
@@ -293,6 +294,7 @@ export default function PublicProjectPage() {
       const data = JSON.parse(e.data);
       const container = contentRef.current;
       if (!container) return;
+      if (data?.source && data.source === clientId) return;
 
       if (data.type === 'highlight') {
         highlightText(container, data.text);
